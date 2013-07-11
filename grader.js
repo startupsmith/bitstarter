@@ -73,13 +73,27 @@ var doStuff = function(data, checksFile) {
 };
 
 if(require.main == module) {
+    /*  Providing a default value for an option seems to mean that the
+        respective option is specified every time, and has a valid value.
+        This is a problem if I have two possible inputs (a file and a URL)
+        because then even if neither is specified, both are deemed to have
+        default values, and so the program will attempt to check both the
+        default file and the default URL. If only a URL is specified on the
+        command line (and no file is set), the program will attempt to check
+        the default file anyway. If only a file is specified (and no URL is
+        set), the program will attempt to access and check the default URL
+        anyway.
+        Solution: get rid of default values for both options.
+     */
     program
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-f, --file <html_file>', 'Path to index.html')
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-u, --url <check_url>', 'The URL to be checked', 'http://powerful-forest-3073.herokuapp.com')
+        .option('-u, --url <check_url>', 'The URL to be checked')
         .parse(process.argv);
- 
-    if(program.file) {
+    if(program.file && program.url) {
+        console.error("Specify either a file or a URL to be checked, but NOT both.");
+        process.exit(2);
+    } else if(program.file) {
         // util.puts(program.file);
         fs.readFile(program.file, function(error, data) {
             if(error) {
@@ -87,9 +101,7 @@ if(require.main == module) {
             }
             doStuff(data, program.checks);
         });
-    }
-
-    if(program.url) {
+    } else if(program.url) {
         // util.puts(program.url);
         rest.get(program.url).on('complete', function(data) {
             if (data instanceof Error) {
@@ -99,6 +111,8 @@ if(require.main == module) {
                 doStuff(data, program.checks);
             }
         });
+    } else {
+        console.error("Neither a file, not a URL were specified - nothing to do.");
     }
 } else {
     exports.checkString = checkString;
